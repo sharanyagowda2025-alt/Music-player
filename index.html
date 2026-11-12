@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JavaScript Music Player</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; display: grid; place-items: center; padding: 24px;
+      font-family: Arial, Helvetica, sans-serif; color: #f5f5ff;
+      background: linear-gradient(135deg, #111827, #312e81, #701a75);
+    }
+    .player {
+      width: min(440px, 100%); padding: 28px; border-radius: 26px;
+      background: rgba(17, 24, 39, .88); border: 1px solid rgba(255,255,255,.12);
+      box-shadow: 0 24px 70px rgba(0,0,0,.4); backdrop-filter: blur(12px);
+    }
+    .top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; }
+    .top h1 { font-size: 1.2rem; letter-spacing: .5px; }
+    .top span { color: #c4b5fd; font-size: .85rem; }
+    .cover {
+      width: 220px; height: 220px; margin: 0 auto 24px; border-radius: 22px;
+      display: grid; place-items: center; font-size: 5rem;
+      background: linear-gradient(145deg, #8b5cf6, #ec4899, #f59e0b);
+      box-shadow: 0 14px 35px rgba(139,92,246,.3);
+    }
+    .song-info { text-align: center; margin-bottom: 22px; }
+    .song-info h2 { font-size: 1.45rem; margin-bottom: 7px; overflow-wrap: anywhere; }
+    .song-info p { color: #c4c8d5; font-size: .95rem; }
+    .timeline { margin: 18px 0 8px; }
+    input[type="range"] { width: 100%; accent-color: #c4b5fd; cursor: pointer; }
+    .times { display: flex; justify-content: space-between; color: #aeb4c5; font-size: .8rem; margin-top: 5px; }
+    .controls { display: flex; align-items: center; justify-content: center; gap: 22px; margin: 20px 0; }
+    button {
+      border: 0; cursor: pointer; color: white; background: transparent;
+      transition: transform .2s, opacity .2s;
+    }
+    button:hover { transform: scale(1.08); }
+    button:focus-visible { outline: 2px solid #c4b5fd; outline-offset: 4px; }
+    .control { font-size: 1.7rem; }
+    .play-btn {
+      width: 64px; height: 64px; border-radius: 50%; font-size: 1.65rem;
+      color: #21133e; background: #ddd6fe; box-shadow: 0 7px 22px rgba(196,181,253,.25);
+    }
+    .volume { display: flex; align-items: center; gap: 12px; margin: 16px 0 22px; color: #c4c8d5; }
+    .volume span { font-size: 1.1rem; }
+    .volume input { flex: 1; }
+    .playlist-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .playlist-head h3 { font-size: 1rem; }
+    .playlist-head label { color: #c4b5fd; font-size: .85rem; cursor: pointer; }
+    #fileInput { display: none; }
+    .playlist { list-style: none; max-height: 190px; overflow-y: auto; display: grid; gap: 7px; }
+    .playlist li {
+      display: flex; align-items: center; gap: 10px; padding: 11px 12px;
+      border-radius: 10px; background: rgba(255,255,255,.05); cursor: pointer;
+      color: #d5d8e4; font-size: .88rem;
+    }
+    .playlist li.active { background: rgba(196,181,253,.17); color: #ddd6fe; border: 1px solid rgba(196,181,253,.3); }
+    .playlist li .track-num { color: #a5a9b8; width: 20px; }
+    .playlist li .track-name { flex: 1; overflow-wrap: anywhere; }
+    .empty { color: #aeb4c5; font-size: .85rem; text-align: center; padding: 12px 0; }
+    .autoplay { display: flex; align-items: center; gap: 8px; color: #c4c8d5; font-size: .85rem; margin-top: 15px; }
+    .autoplay input { accent-color: #c4b5fd; }
+    @media (max-width: 400px) { .player { padding: 20px; } .cover { width: 180px; height: 180px; } }
+  </style>
+</head>
+<body>
+  <main class="player">
+    <div class="top">
+      <h1>♫ MUSIC PLAYER</h1>
+      <span>JavaScript</span>
+    </div>
+
+    <div class="cover" aria-hidden="true">♫</div>
+
+    <div class="song-info">
+      <h2 id="songTitle">Choose a song</h2>
+      <p id="artist">Add audio files to your playlist</p>
+    </div>
+
+    <audio id="audio"></audio>
+
+    <div class="timeline">
+      <input id="progress" type="range" min="0" max="100" value="0" aria-label="Song progress" />
+      <div class="times"><span id="currentTime">0:00</span><span id="duration">0:00</span></div>
+    </div>
+
+    <div class="controls">
+      <button class="control" id="prevBtn" aria-label="Previous song" title="Previous">⏮</button>
+      <button class="play-btn" id="playBtn" aria-label="Play" title="Play">▶</button>
+      <button class="control" id="nextBtn" aria-label="Next song" title="Next">⏭</button>
+    </div>
+
+    <div class="volume">
+      <span aria-hidden="true">🔈</span>
+      <input id="volume" type="range" min="0" max="1" step="0.01" value="0.75" aria-label="Volume" />
+      <span aria-hidden="true">🔊</span>
+    </div>
+
+    <div class="playlist-head">
+      <h3>Playlist</h3>
+      <label for="fileInput">＋ Add songs</label>
+      <input id="fileInput" type="file" accept="audio/*" multiple />
+    </div>
+    <ul class="playlist" id="playlist">
+      <li class="empty">Your playlist is empty. Add audio files above.</li>
+    </ul>
+
+    <label class="autoplay"><input id="autoplay" type="checkbox" checked /> Autoplay next song</label>
+  </main>
+
+  <script>
+    const audio = document.getElementById('audio');
+    const songTitle = document.getElementById('songTitle');
+    const artist = document.getElementById('artist');
+    const playBtn = document.getElementById('playBtn');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const progress = document.getElementById('progress');
+    const currentTimeEl = document.getElementById('currentTime');
+    const durationEl = document.getElementById('duration');
+    const volume = document.getElementById('volume');
+    const fileInput = document.getElementById('fileInput');
+    const playlistEl = document.getElementById('playlist');
+    const autoplay = document.getElementById('autoplay');
+
+    let tracks = [];
+    let currentIndex = -1;
+
+    function formatTime(seconds) {
+      if (!Number.isFinite(seconds)) return '0:00';
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60).toString().padStart(2, '0');
+      return `${mins}:${secs}`;
+    }
+
+    function renderPlaylist() {
+      playlistEl.innerHTML = '';
+      if (!tracks.length) {
+        playlistEl.innerHTML = '<li class="empty">Your playlist is empty. Add audio files above.</li>';
+        return;
+      }
+      tracks.forEach((track, index) => {
+        const li = document.createElement('li');
+        if (index === currentIndex) li.classList.add('active');
+        const num = document.createElement('span');
+        num.className = 'track-num';
+        num.textContent = String(index + 1).padStart(2, '0');
+        const name = document.createElement('span');
+        name.className = 'track-name';
+        name.textContent = track.title;
+        li.append(num, name);
+        li.addEventListener('click', () => loadTrack(index, true));
+        playlistEl.appendChild(li);
+      });
+    }
+
+    function loadTrack(index, shouldPlay = false) {
+      if (!tracks.length) return;
+      currentIndex = (index + tracks.length) % tracks.length;
+      const track = tracks[currentIndex];
+      audio.src = track.url;
+      songTitle.textContent = track.title;
+      artist.textContent = track.artist || 'Local audio file';
+      progress.value = 0;
+      currentTimeEl.textContent = '0:00';
+      durationEl.textContent = '0:00';
+      renderPlaylist();
+      if (shouldPlay) playSong();
+    }
+
+    async function playSong() {
+      if (currentIndex === -1 && tracks.length) loadTrack(0);
+      if (currentIndex === -1) {
+        songTitle.textContent = 'No songs yet';
+        artist.textContent = 'Use “Add songs” to choose audio files';
+        return;
+      }
+      try {
+        await audio.play();
+        playBtn.textContent = '⏸';
+        playBtn.setAttribute('aria-label', 'Pause');
+        playBtn.title = 'Pause';
+      } catch (error) {
+        artist.textContent = 'Playback could not start. Try selecting the song again.';
+      }
+    }
+
+    function pauseSong() {
+      audio.pause();
+      playBtn.textContent = '▶';
+      playBtn.setAttribute('aria-label', 'Play');
+      playBtn.title = 'Play';
+    }
+
+    playBtn.addEventListener('click', () => audio.paused ? playSong() : pauseSong());
+    prevBtn.addEventListener('click', () => {
+      if (!tracks.length) return;
+      loadTrack(currentIndex <= 0 ? tracks.length - 1 : currentIndex - 1, true);
+    });
+    nextBtn.addEventListener('click', () => {
+      if (!tracks.length) return;
+      loadTrack(currentIndex + 1, true);
+    });
+
+    audio.addEventListener('loadedmetadata', () => {
+      durationEl.textContent = formatTime(audio.duration);
+    });
+    audio.addEventListener('timeupdate', () => {
+      if (audio.duration) progress.value = (audio.currentTime / audio.duration) * 100;
+      currentTimeEl.textContent = formatTime(audio.currentTime);
+    });
+    progress.addEventListener('input', () => {
+      if (audio.duration) audio.currentTime = (Number(progress.value) / 100) * audio.duration;
+    });
+    volume.addEventListener('input', () => audio.volume = Number(volume.value));
+    audio.volume = Number(volume.value);
+
+    audio.addEventListener('ended', () => {
+      if (autoplay.checked && tracks.length) loadTrack(currentIndex + 1, true);
+      else pauseSong();
+    });
+
+    fileInput.addEventListener('change', event => {
+      const files = Array.from(event.target.files || []);
+      files.forEach(file => {
+        tracks.push({
+          title: file.name.replace(/\.[^/.]+$/, ''),
+          artist: 'Local audio file',
+          url: URL.createObjectURL(file)
+        });
+      });
+      if (currentIndex === -1 && tracks.length) loadTrack(0);
+      else renderPlaylist();
+      fileInput.value = '';
+    });
+
+    // Keyboard shortcuts: Space toggles play/pause, arrows skip tracks.
+    document.addEventListener('keydown', event => {
+      if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+      if (event.code === 'Space') { event.preventDefault(); audio.paused ? playSong() : pauseSong(); }
+      if (event.code === 'ArrowRight') nextBtn.click();
+      if (event.code === 'ArrowLeft') prevBtn.click();
+    });
+  </script>
+</body>
+</html>
